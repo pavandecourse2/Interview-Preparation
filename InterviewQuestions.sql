@@ -59,5 +59,132 @@ INSERT INTO transactions_1308 VALUES (53151, 'deposit', 178, '2022-07-08'),
 select * from transactions_1308;
 
 
+----------------------------------------------------------------------------------------------
+create table table1(id int)
+insert into table1 values (1), (1),(2),(null),(null)
+
+create table table2(id int)
+insert into table2 values (1),(3),(null)
+
+select * from table1 t1 join table2  t2 on t1.id = t2.id 
+
+select * from table1 t1 left join table2  t2 on t1.id = t2.id 
+
+select * from table1 t1 right join table2  t2 on t1.id = t2.id 
+
+select * from table1 t1 full join table2  t2 on t1.id = t2.id 
+   
+select * from table1 t1 cross join table2  t2    
+
+------------------------------------------------------------------------------
+
+--Let us first create student table
+create table students(sname varchar(50), sid varchar(50), marks int)
+
+--Insert the records
+insert into students values('A','X',75),('A','Y',75),('A','Z',80),('B','X',90),('B','Y',91),('B','Z',75)
 
 
+with stud_marks as(
+select * , row_number() over (partition by sname order by marks desc ) as rrn from students)
+select sname,sum(marks)
+from stud_marks
+where rrn <=2
+group by sname;
+
+
+-----------------------------------------------------------------------------------------------
+--Create EmployeesID table
+create table employeesID (id int);
+
+--Insert the records
+insert into employeesID values (2),(5),(6),(6),(7),(8),(8);
+
+select * from employeesID;
+
+with maxid as (
+select id
+from employeesID
+group by id
+having count(id) = 1) select max(id) from maxid ;
+
+--2nd method
+select max(id) from  (
+         select id,count(*) over(partition by id) as rrn from employeesID
+         ) as d 
+         where rrn = 1;
+--3rd method
+SELECT MAX(id)
+FROM employeesID
+WHERE id IN (
+  SELECT id
+  FROM employeesID
+  GROUP BY id
+  HAVING COUNT(*) = 1
+);
+
+-----------------------------------------------------------------------
+
+--DDL
+create table tablea (empid int, empname varchar(50), salary int);
+create table tableb (empid int, empname varchar(50), salary int);
+
+--Insert the records
+insert into tablea values(1,'AA',1000),(2,'BB',300);
+insert into tableb values(2,'BB',400),(3,'CC',100);
+
+
+--2nd method
+with cte as (select *,row_number() over(partition by empid order by salary ) as rrn from (
+              (select * from tablea
+              union
+              select * from tableb 
+              )
+              )
+              a)
+select empid,empname,salary from cte where rrn=1
+
+--1st method
+select empid,empname,min(salary) from(
+ 
+              select * from tablea
+              union
+              select * from tableb ) a
+              group by empid,empname
+
+
+--------------------------------------------------
+--Let us first create sales table
+
+create table salesDB(month varchar(50), ytd_sales int, monthnum int)
+delete from salesDB;
+
+--Insert the records
+insert into salesDB values('jan',15,1),('feb',22,2),('mar',35,3),('apr',45,4),('may',60,5)
+
+select * from salesDB;
+
+with cte as (
+select month,ytd_sales,monthnum,lag(ytd_sales,1,0) over(order by monthnum) as lag_sales from salesDB )
+select month,ytd_sales, (ytd_sales - lag_sales) as periodic_sales from cte;
+
+----------------------------------------
+---Let us first create sales table
+create table happiness_tbl (ranking int, country varchar(50))
+
+---Insert the records
+insert into happiness_tbl values (1,'Finland'),(2,'Denmark'),(3,'Iceland'),
+(4,'Israel'),(5,'Netherlands'),(6,'Sweden'),(7,'Norway'),(8,'Switzerland'),
+(9,'Luxembourg'),(128,'Srilanka'),(126,'India')
+
+select * from happiness_tbl;
+
+with cte as (
+select ranking,country, case when country = 'India' then 1
+                             when country ='Srilanka' then 2
+                             else 3 end as derivied_rank
+from happiness_tbl
+)
+select country from cte order by derivied_rank;
+
+-------------------------------------------------------------------------------
