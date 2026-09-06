@@ -1224,3 +1224,450 @@ select customerid , totalpurchaseamount,avg(totalpurchaseamount) over() as avg_a
 
 select distinct customerid ,totalpurchaseamount , avg_amount from cte2 where totalpurchaseamount > avg_amount;
  ---------------------------------
+
+ -->question:18-8. Find the percentage contribution of each product to total sales.
+CREATE TABLE Sales_prt1 (
+    Product VARCHAR(50),
+    SalesAmount INT
+);
+
+INSERT INTO Sales_prt1 (Product, SalesAmount) VALUES
+('Laptop', 45000),
+('Mobile', 30000),
+('Tablet', 15000),
+('Headphones', 10000),
+('Smartwatch', 8000),
+('Desktop', 25000),
+('Camera', 12000),
+('Printer', 7000),
+('Monitor', 9000),
+('Keyboard', 5000);
+
+select product ,salesamount ,round(salesamount * 100.0/sum(salesamount) over(),2) as percentage
+from sales_prt1
+
+-------------------------------------------------------------------------------
+--question-19:9. Calculate month-over-month sales growth.
+CREATE TABLE MonthlySales_prt (
+    Month VARCHAR(20),
+    SalesAmount INT,
+    MonthOrder INT
+);
+
+INSERT INTO MonthlySales_prt (Month, SalesAmount, MonthOrder) VALUES
+('Jan', 10000, 1),
+('Feb', 12000, 2),
+('Mar', 15000, 3),
+('Apr', 14000, 4),
+('May', 16000, 5),
+('Jun', 18000, 6),
+('Jul', 17000, 7),
+('Aug', 20000, 8),
+('Sep', 22000, 9),
+('Oct', 21000, 10),
+('Nov', 23000, 11),
+('Dec', 25000, 12);
+
+-->1st method
+SELECT 
+    curr.Month,
+    curr.SalesAmount,
+    prev.SalesAmount AS PreviousMonthSales,
+    ROUND(((curr.SalesAmount - prev.SalesAmount) * 100.0 / prev.SalesAmount), 2) AS MoM_Growth_Percentage
+FROM MonthlySales_prt curr
+LEFT JOIN MonthlySales_prt prev
+    ON curr.MonthOrder = prev.MonthOrder + 1
+ORDER BY curr.MonthOrder;
+
+--2nd method
+
+with cte as (
+select month,salesamount,monthorder,
+lag(salesamount,1) over( order by monthorder) as previousMonthsales
+ 
+from MonthlySales_prt)
+select *,round(((salesamount -previousmonthsales )* 100.0/previousMonthsales),2) as MoM_Growth_Percentage
+from cte;
+---------------------------------------------------------------------------------------------------------------------
+--question-20:9. Calculate year-on-year sales growth.
+
+CREATE TABLE YearlySales_prt (
+    Year INT,
+    Month VARCHAR(20),
+    SalesAmount INT,
+    MonthOrder INT
+);
+
+INSERT INTO YearlySales_prt (Year, Month, SalesAmount, MonthOrder) VALUES
+-- Year 2025
+(2025, 'Jan', 10000, 1),
+(2025, 'Feb', 12000, 2),
+(2025, 'Mar', 15000, 3),
+(2025, 'Apr', 14000, 4),
+(2025, 'May', 16000, 5),
+(2025, 'Jun', 18000, 6),
+(2025, 'Jul', 17000, 7),
+(2025, 'Aug', 20000, 8),
+(2025, 'Sep', 22000, 9),
+(2025, 'Oct', 21000, 10),
+(2025, 'Nov', 23000, 11),
+(2025, 'Dec', 25000, 12),
+
+-- Year 2026
+(2026, 'Jan', 12000, 1),
+(2026, 'Feb', 14000, 2),
+(2026, 'Mar', 16000, 3),
+(2026, 'Apr', 15000, 4),
+(2026, 'May', 17000, 5),
+(2026, 'Jun', 20000, 6),
+(2026, 'Jul', 19000, 7),
+(2026, 'Aug', 22000, 8),
+(2026, 'Sep', 24000, 9),
+(2026, 'Oct', 23000, 10),
+(2026, 'Nov', 25000, 11),
+(2026, 'Dec', 27000, 12);
+
+
+with cte as (
+select year,month,salesamount,monthorder,
+lag(salesamount,1) over( partition by monthorder order by year) as previousMonthsales
+,row_number() over(partition by year order by year) as row_num
+ 
+from YearlySales_prt
+
+)select *,round(((salesamount -previousmonthsales )* 100.0/previousMonthsales),2) as MoM_Growth_Percentage
+from cte
+order by year,monthorder
+--------------------------------------------------------------
+-->question:20 :10. Calculate year-to-date sales and month-to-date sales.
+CREATE TABLE DailySales_prt (
+    SaleDate DATE,
+    SalesAmount INT
+);
+INSERT INTO DailySales_prt (SaleDate, SalesAmount) VALUES
+('2026-01-05', 1000),
+('2026-01-15', 1500),
+('2026-02-10', 2000),
+('2026-02-20', 1800),
+('2026-03-05', 2200),
+('2026-03-18', 2500),
+('2026-04-02', 3000),
+('2026-04-15', 2800),
+('2026-05-07', 3500),
+('2026-05-20', 4000),
+('2026-06-01', 4200),
+('2026-06-15', 3800);
+
+---Year-to-date sales
+select saledate,salesamount, 
+sum(salesAmount) over(order by year(saledate) rows between unbounded preceding and current row) as year_to_date_sales
+from DailySales_prt;
+
+---month-to-date sales
+select saledate,salesamount, 
+sum(salesAmount) over(order by year(saledate) rows between unbounded preceding and current row) as year_to_date_sales,
+sum(salesAmount) over(partition by month(saledate)order by year(saledate) rows between unbounded preceding and current row) as month_to_date_sales
+from DailySales_prt
+
+
+-------------------------------------------------------------
+--question-21:11. Find the longest consecutive login streak per user.
+CREATE TABLE Logins_prt1 (
+    UserID INT,
+    LoginDate DATE
+);
+
+INSERT INTO Logins_prt1 (UserID, LoginDate) VALUES
+(1, '2026-09-01'),
+(1, '2026-09-02'),
+(1, '2026-09-03'),
+(1, '2026-09-05'),
+(1, '2026-09-06'),
+(2, '2026-09-01'),
+(2, '2026-09-03'),
+(2, '2026-09-04'),
+(2, '2026-09-05'),
+(2, '2026-09-07'),
+(3, '2026-09-02'),
+(3, '2026-09-03'),
+(3, '2026-09-04'),
+(3, '2026-09-05');
+
+select l1.userid,
+min(l1.logindate) as streakStartDate,
+max(l1.logindate) as StreakEndDate,
+count(*) as StreakLength
+
+from logins_prt1 l1 join logins_prt1 l2 on l1.userid = l2.userid and datediff(day,l2.logindate,l1.logindate) =1 
+group by l1.userid
+order by StreakLength desc; 
+
+------------------------
+--question:21 :12. Find overlapping date ranges, such as overlapping employee leaves or room bookings.
+CREATE TABLE Bookings_prt1 (
+    BookingID INT,
+    UserID INT,
+    StartDate DATE,
+    EndDate DATE
+);
+
+
+INSERT INTO Bookings_prt1 (BookingID, UserID, StartDate, EndDate) VALUES
+(1, 101, '2026-09-01', '2026-09-05'),
+(2, 102, '2026-09-03', '2026-09-06'),
+(3, 103, '2026-09-07', '2026-09-10'),
+(4, 104, '2026-09-05', '2026-09-08'),
+(5, 105, '2026-09-02', '2026-09-04');
+
+SELECT 
+    b1.BookingID AS Booking1,
+    b2.BookingID AS Booking2,
+    b1.UserID AS User1,
+    b2.UserID AS User2,
+    b1.StartDate, b1.EndDate,
+    b2.StartDate, b2.EndDate
+FROM Bookings_prt1 b1
+JOIN Bookings_prt1 b2
+  ON b1.BookingID < b2.BookingID
+ AND b1.StartDate <= b2.EndDate
+ AND b1.EndDate >= b2.StartDate
+ORDER BY b1.BookingID, b2.BookingID;
+
+
+
+
+
+
+--------------------------------------------------------------------------
+--question-23:Find gaps in order/invoice IDs.
+
+CREATE TABLE Invoices_prt (
+    InvoiceID INT
+);
+
+delete from Invoices_prt;
+
+INSERT INTO Invoices_prt (InvoiceID) VALUES
+(1001), (1002), (1003), (1006), (1008);
+
+
+select invoiceid, lead(invoiceid,1) over(order by invoiceid) as nextid,
+case
+when lead(invoiceid,1) over(order by invoiceid)  > invoiceid+1 
+then concat(invoiceid+1 ,' to ',lead(invoiceid,1) over(order by invoiceid) - 1) end AS Missing_InvoiceID
+from invoices_prt
+order by invoiceid
+-----------------------------------------------------------------------------------------
+-->question :15. Split a comma-separated value into multiple rows.
+
+CREATE TABLE Customers_prt3 (
+    CustomerID INT,
+    Hobbies VARCHAR(100)
+);
+
+INSERT INTO Customers_prt3 (CustomerID, Hobbies) VALUES
+(1, 'Reading,Traveling,Cooking'),
+(2, 'Music,Sports'),
+(3, 'Photography,Writing,Painting');
+
+select customerid,
+trim(value) as hobby
+from Customers_prt3 cross apply string_split(Hobbies,',')
+
+
+-------------------------------------------------------------------------------------
+-->question :16. Combine multiple rows into one comma-separated value using STRING_AGG().
+
+CREATE TABLE Invoices_prt2 (
+    CustomerID INT,
+    InvoiceID INT
+);
+
+INSERT INTO Invoices_prt2 (CustomerID, InvoiceID) VALUES
+(1, 1001), (1, 1002), (1, 1003),
+(2, 2001), (2, 2002),
+(3, 3001);
+
+select customerid,
+string_agg(InvoiceID,',') within group(order by invoiceid) as combined_invoiceid
+from Invoices_prt2
+group by CustomerID;
+-----------------------------------------------------------
+
+--scd-type2 implementation
+CREATE TABLE DimCustomer (
+    CustomerKey INT IDENTITY(1,1) PRIMARY KEY,
+    CustomerID INT,
+    CustomerName VARCHAR(100),
+    City VARCHAR(50),
+    EffectiveFrom DATETIME,
+    EffectiveTo DATETIME,
+    IsCurrent BIT
+);
+CREATE TABLE StgCustomer (
+    CustomerID INT,
+    CustomerName VARCHAR(100),
+    City VARCHAR(50)
+);
+
+INSERT INTO DimCustomer (CustomerID, CustomerName, City, EffectiveFrom, EffectiveTo, IsCurrent)
+VALUES
+(101, 'Alice', 'Delhi', '2025-01-01', NULL, 1),
+(102, 'Bob', 'Mumbai', '2025-01-01', NULL, 1);
+
+INSERT INTO StgCustomer (CustomerID, CustomerName, City)
+VALUES
+(101, 'Alice', 'Mumbai'),   -- changed city
+(103, 'Charlie', 'Pune');   -- brand new customer
+
+-- Step 1 + Step 2: Expire old records if data changed
+MERGE DimCustomer AS target
+USING StgCustomer AS source
+ON target.CustomerID = source.CustomerID
+   AND target.IsCurrent = 1
+
+WHEN MATCHED AND 
+     (target.CustomerName <> source.CustomerName 
+      OR target.City <> source.City)
+THEN
+    UPDATE SET 
+        target.EffectiveTo = GETDATE(),
+        target.IsCurrent = 0
+
+WHEN NOT MATCHED BY TARGET
+THEN
+    INSERT (CustomerID, CustomerName, City, EffectiveFrom, EffectiveTo, IsCurrent)
+    VALUES (source.CustomerID, source.CustomerName, source.City, GETDATE(), NULL, 1);
+
+-- Step 4: Insert new version for changed customers
+INSERT INTO DimCustomer (CustomerID, CustomerName, City, EffectiveFrom, EffectiveTo, IsCurrent)
+SELECT s.CustomerID, s.CustomerName, s.City, GETDATE(), NULL, 1
+FROM StgCustomer s
+JOIN DimCustomer d ON s.CustomerID = d.CustomerID
+WHERE d.IsCurrent = 0 AND d.EffectiveTo = GETDATE();
+
+
+--------------------------------------------------------
+-->scd-typ1:
+CREATE TABLE DimCustomer_1 (
+    CustomerID INT PRIMARY KEY,
+    CustomerName VARCHAR(100),
+    City VARCHAR(50),
+    ModifiedDate DATETIME
+);
+
+INSERT INTO DimCustomer_1 (CustomerID, CustomerName, City, ModifiedDate)
+VALUES
+(101, 'Alice', 'Delhi', '2025-01-01'),
+(102, 'Bob', 'Mumbai', '2025-01-01');
+
+CREATE TABLE StgCustomer_1 (
+    CustomerID INT,
+    CustomerName VARCHAR(100),
+    City VARCHAR(50)
+);
+
+INSERT INTO StgCustomer_1 (CustomerID, CustomerName, City)
+VALUES
+(101, 'Alice', 'Mumbai'),   -- Alice moved from Delhi → Mumbai
+(103, 'Charlie', 'Pune');   -- brand new customer
+
+-->method-1:
+MERGE DimCustomer_1 AS target
+USING StgCustomer_1 AS source
+ON target.CustomerID = source.CustomerID
+
+WHEN MATCHED THEN
+    UPDATE SET 
+        target.CustomerName = source.CustomerName,
+        target.City = source.City,
+        target.ModifiedDate = GETDATE()
+
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (CustomerID, CustomerName, City, ModifiedDate)
+    VALUES (source.CustomerID, source.CustomerName, source.City, GETDATE());
+
+
+
+-->method-2:
+-- Update existing customers (overwrite changes)
+UPDATE d
+SET d.CustomerName = s.CustomerName,
+    d.City = s.City,
+    d.ModifiedDate = GETDATE()
+FROM DimCustomer d
+JOIN StgCustomer s ON d.CustomerID = s.CustomerID;
+
+-- Insert new customers
+INSERT INTO DimCustomer (CustomerID, CustomerName, City, ModifiedDate)
+SELECT s.CustomerID, s.CustomerName, s.City, GETDATE()
+FROM StgCustomer s
+LEFT JOIN DimCustomer d ON s.CustomerID = d.CustomerID
+WHERE d.CustomerID IS NULL;
+
+
+
+
+
+
+-------------------------------------------------------------
+--15. Split a comma-separated value into multiple rows.
+
+----------------------------------------------------------
+
+-->question :26. Find records changed in the last 24 hours.
+CREATE TABLE Orders_prt4 (
+    OrderID INT,
+    CustomerID INT,
+    Amount DECIMAL(10,2),
+    ModifiedDate DATETIME
+);
+
+SELECT *
+FROM Orders_prt4
+WHERE ModifiedDate >= DATEADD(HOUR, -24, GETDATE());
+
+--------------------------------------------------
+--qusetion :29. Find the difference between two dates in days, months, and years.
+DECLARE @StartDate DATE = '2020-01-01';
+DECLARE @EndDate   DATE = '2026-09-07';
+
+SELECT 
+    DATEDIFF(DAY, @StartDate, @EndDate)   AS DiffInDays,
+    DATEDIFF(MONTH, @StartDate, @EndDate) AS DiffInMonths,
+    DATEDIFF(YEAR, @StartDate, @EndDate)  AS DiffInYears;
+---------------------------------------------
+
+--question :30. Convert rows of event data into session start/end times using LAG() and LEAD().
+CREATE TABLE UserEvents_prt (
+    UserID INT,
+    EventTime DATETIME,
+    EventType VARCHAR(50)
+);
+
+INSERT INTO UserEvents_prt (UserID, EventTime, EventType)
+VALUES
+(1, '2026-09-07 09:00:00', 'Login'),
+(1, '2026-09-07 09:15:00', 'Click'),
+(1, '2026-09-07 09:45:00', 'Logout'),
+(1, '2026-09-07 11:00:00', 'Login'),
+(1, '2026-09-07 11:30:00', 'Logout');
+
+WITH EventCTE AS (
+    SELECT 
+        UserID,
+        EventTime,
+        EventType,
+        LAG(EventType) OVER (PARTITION BY UserID ORDER BY EventTime) AS PrevEvent,
+        LEAD(EventType) OVER (PARTITION BY UserID ORDER BY EventTime) AS NextEvent,
+        LEAD(EventTime) OVER (PARTITION BY UserID ORDER BY EventTime) AS NextEventTime
+    FROM UserEvents_prt
+)
+SELECT 
+    UserID,
+    EventTime AS SessionStart,
+    NextEventTime AS SessionEnd
+FROM EventCTE
+WHERE EventType = 'Login' AND NextEvent = 'Logout';
+
+
